@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emotion-Aware Meal Planner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1c1c1c;
+      color: white;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-bottom: 0;
+    }
+    form {
+      margin-top: 10px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    input[type="text"] {
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: none;
+      width: 200px;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      background-color: #e50914;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #b20710;
+    }
+    .meals-grid {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .meal-card {
+      background: #222;
+      border-radius: 10px;
+      width: 180px;
+      box-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+      text-align: center;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    .meal-card:hover {
+      transform: scale(1.05);
+    }
+    .meal-image {
+      height: 120px;
+      background-size: cover;
+      background-position: center;
+    }
+    .meal-title {
+      padding: 10px;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+    .loading {
+      font-style: italic;
+      color: #aaa;
+    }
+    .error {
+      color: #ff4c4c;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>How are you feeling today?</h1>
+  <form id="moodForm">
+    <input id="moodInput" type="text" placeholder="Enter your mood (e.g., happy)" autocomplete="off" />
+    <button type="submit">Get Meals</button>
+  </form>
+
+  <div id="result"></div>
+
+  <script>
+    const form = document.getElementById("moodForm");
+    const userInput = document.getElementById("moodInput");
+    const resultDiv = document.getElementById("result");
+
+    // Image paths relative to /static/images/
+    const mealImages = {
+      "chocolate": "/static/images/chocolate.webp",
+      "pasta": "/static/images/pasta.png",
+      "smoothie": "/static/images/smoothie.jpg",
+      "wrap": "/static/images/wrap.jpg",
+      "salad": "/static/images/salad.jpg",
+      "soup": "/static/images/soup.jpg"
+    };
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const mood = userInput.value.trim().toLowerCase();
+      if (!mood) {
+        alert("Please enter how you are feeling!");
+        return;
+      }
+
+      resultDiv.innerHTML = `<div class="loading">Loading meal ideas for "${mood}"...</div>`;
+
+      try {
+        const response = await fetch("/get_meals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mood })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          resultDiv.innerHTML = `<div class="error">${err.error}</div>`;
+          return;
+        }
+
+        const data = await response.json();
+        const meals = data.meals;
+
+        if (meals.length === 0) {
+          resultDiv.innerHTML = `<div class="error">No meal suggestions found.</div>`;
+          return;
+        }
+
+        let html = `<div class="meals-grid">`;
+        meals.forEach(meal => {
+          const imgSrc = mealImages[meal] || "/static/images/default.jpg";
+          html += `
+            <div class="meal-card" tabindex="0">
+              <div class="meal-image" style="background-image: url('${imgSrc}');"></div>
+              <div class="meal-title">${meal.charAt(0).toUpperCase() + meal.slice(1)}</div>
+            </div>
+          `;
+        });
+        html += "</div>";
+        resultDiv.innerHTML = html;
+
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">Failed to fetch meal suggestions. Please try again later.</div>`;
+        console.error("Fetch error:", error);
+      }
+    });
+  </script>
+</body>
+</html>
